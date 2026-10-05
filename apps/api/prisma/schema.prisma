@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  lastSeenAt   DateTime         @default(now())
+  coupleAsA    Couple?          @relation("CoupleUserA")
+  coupleAsB    Couple?          @relation("CoupleUserB")
+  inviteCode   InviteCode?
+  location     Location?
+  privacy      PrivacySettings?
+  sessions     Session[]
+  status       Status?
+
+  @@index([lastSeenAt])
+}
+
+model Couple {
+  id        String   @id @default(uuid())
+  userAId   String   @unique
+  userBId   String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userA     User     @relation("CoupleUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB     User?    @relation("CoupleUserB", fields: [userBId], references: [id])
+
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model InviteCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  ownerId   String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model Status {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  key       String
+  emoji     String
+  label     String
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Location {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  latitude   Float
+  longitude  Float
+  accuracy   Float?
+  placeLabel String?
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+}
+
+model PrivacySettings {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  shareLocation Boolean  @default(false)
+  shareStatus   Boolean  @default(true)
+  shareLastSeen Boolean  @default(true)
+  paused        Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  refreshToken String    @unique
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
